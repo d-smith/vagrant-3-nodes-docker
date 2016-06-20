@@ -1,0 +1,10 @@
+---
+- name: sw1
+  box: ubuntu/trusty64
+  priv_ip: 192.168.1.104
+- name: sw2
+  box: ubuntu/trusty64
+  priv_ip: 192.168.1.105
+- name: sw3
+  box: ubuntu/trusty64
+  priv_ip: 192.168.1.106
