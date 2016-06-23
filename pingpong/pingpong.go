@@ -7,13 +7,13 @@ import (
 
 func main() {
     http.HandleFunc("/", func(rw http.ResponseWriter, rq *http.Request) {
-        ping,err := http.Get("pingsvc:3000")
+        ping,err := http.Get("http://pingsvc:3000")
         if err != nil {
             http.Error(rw, err.Error(), http.StatusInternalServerError)
             return
         }
 
-        pong,err := http.Get("pongsvc:4000")
+        pong,err := http.Get("http://pongsvc:4000")
         if err != nil {
             http.Error(rw, err.Error(), http.StatusInternalServerError)
             return
