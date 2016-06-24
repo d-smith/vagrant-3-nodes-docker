@@ -1,3 +1,112 @@
+Raw notes - looks like the overlay network was not working on kernel
+version of the ubuntu 14 version I was using... using wily did the 
+trick (ami-05384865 in us-west-1).
+
+The service was also exposed on a different port than I expected...
+
+More experimentation to nail this down is needed...
+
+
+<pre>
+ubuntu@ip-10-0-0-195:~$ docker swarm init
+Swarm initialized: current node (cv97xx6cmlfxmdaue9pjcw9ql) is now a manager.
+ubuntu@ip-10-0-0-195:~$ docker network create -d overlay net1
+16yq3f4vn5rddhwgesvvinjiq
+ubuntu@ip-10-0-0-195:~$ docker service create --network net1 --name ping --publish 3000/tcp dasmith/ping
+8joctah1e446qqn9qombrv53r
+ubuntu@ip-10-0-0-195:~$ 
+ubuntu@ip-10-0-0-195:~$ 
+ubuntu@ip-10-0-0-195:~$ 
+ubuntu@ip-10-0-0-195:~$ docker service ls
+ID            NAME  REPLICAS  IMAGE         COMMAND
+8joctah1e446  ping  1/1       dasmith/ping  
+ubuntu@ip-10-0-0-195:~$ docker service tasks
+"docker service tasks" requires exactly 1 argument(s).
+See 'docker service tasks --help'.
+
+Usage:  docker service tasks [OPTIONS] SERVICE
+
+List the tasks of a service
+ubuntu@ip-10-0-0-195:~$ docker service tasks ping
+ID                         NAME    SERVICE  IMAGE         LAST STATE          DESIRED STATE  NODE
+5xlllv3i9nx1buwceft47xye7  ping.1  ping     dasmith/ping  Running 13 seconds  Running        ip-10-0-0-195
+ubuntu@ip-10-0-0-195:~$ curl localhost:3000
+curl: (7) Failed to connect to localhost port 3000: Connection refused
+ubuntu@ip-10-0-0-195:~$ docker service inspect ping
+[
+    {
+        "ID": "8joctah1e446qqn9qombrv53r",
+        "Version": {
+            "Index": 25
+        },
+        "CreatedAt": "2016-06-24T19:47:21.837530239Z",
+        "UpdatedAt": "2016-06-24T19:47:21.855023643Z",
+        "Spec": {
+            "Name": "ping",
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "dasmith/ping"
+                },
+                "Resources": {
+                    "Limits": {},
+                    "Reservations": {}
+                },
+                "RestartPolicy": {
+                    "Condition": "any",
+                    "MaxAttempts": 0
+                },
+                "Placement": {}
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 1
+                }
+            },
+            "UpdateConfig": {},
+            "Networks": [
+                {
+                    "Target": "16yq3f4vn5rddhwgesvvinjiq"
+                }
+            ],
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 3000
+                    }
+                ]
+            }
+        },
+        "Endpoint": {
+            "Spec": {},
+            "Ports": [
+                {
+                    "Protocol": "tcp",
+                    "TargetPort": 3000,
+                    "PublishedPort": 30000
+                }
+            ],
+            "VirtualIPs": [
+                {
+                    "NetworkID": "88ezpa24l5bci9p324gnwzykf",
+                    "Addr": "10.255.0.6/16"
+                },
+                {
+                    "NetworkID": "16yq3f4vn5rddhwgesvvinjiq",
+                    "Addr": "10.0.0.2/24"
+                }
+            ]
+        }
+    }
+]
+ubuntu@ip-10-0-0-195:~$ curl localhost:30000
+PING
+
+</pre>
+
+
+
 ## Three Nodes with Docker
 
 (Note - this is in progress - seeing some problems with the overlay
