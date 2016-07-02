@@ -2,10 +2,14 @@ Raw notes - looks like the overlay network was not working on kernel
 version of the ubuntu 14 version I was using... using wily did the 
 trick (ami-05384865 in us-west-1).
 
+Local vagrant modified to update the kernel, service seems to start but routing to published
+service does not appear to work.
+
 The service was also exposed on a different port than I expected...
 
 More experimentation to nail this down is needed...
 
+vagrant plugin install vagrant-reload
 
 <pre>
 ubuntu@ip-10-0-0-195:~$ docker swarm init

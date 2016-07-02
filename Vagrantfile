@@ -34,10 +34,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       srv.vm.hostname = server['name']
       srv.vm.box = server['box']
 
+      if ENV['http_proxy'].nil? == false
+        puts 'Setting http proxy'
+        config.proxy.http = ENV['http_proxy']
+        config.proxy.https = ENV['http_proxy']
+        config.proxy.no_proxy="localhost," + server['priv_ip'] + ",/var/run/docker.sock"
+      else
+        puts 'Environment does not specify http_proxy value...'
+      end
+
       srv.vm.network 'private_network', ip: server['priv_ip']
       srv.vm.synced_folder '.', '/vagrant'
 
       srv.vm.provision "shell", path: "provision.sh"
+      srv.vm.provision :reload
     end
   end
 end
