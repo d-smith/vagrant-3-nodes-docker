@@ -1,50 +1,28 @@
-Raw notes - looks like the overlay network was not working on kernel
-version of the ubuntu 14 version I was using... using wily did the 
-trick (ami-05384865 in us-west-1).
+## Swarm Experiment
 
-Local vagrant modified to update the kernel, service seems to start but routing to published
-service does not appear to work.
+### AWS
 
-The service was also exposed on a different port than I expected...
+The ubuntu wily image has the networking support needed for an overlay network to work across
+cluster members (i.e. ubuntu/images/hvm/ubuntu-wily-15.10-amd64-server-20160222 (ami-05384865))
 
-More experimentation to nail this down is needed...
-
-vagrant plugin install vagrant-reload
+Set up the swarm
 
 <pre>
-ubuntu@ip-10-0-0-195:~$ docker swarm init
-Swarm initialized: current node (cv97xx6cmlfxmdaue9pjcw9ql) is now a manager.
-ubuntu@ip-10-0-0-195:~$ docker network create -d overlay net1
-16yq3f4vn5rddhwgesvvinjiq
-ubuntu@ip-10-0-0-195:~$ docker service create --network net1 --name ping --publish 3000/tcp dasmith/ping
-8joctah1e446qqn9qombrv53r
-ubuntu@ip-10-0-0-195:~$ 
-ubuntu@ip-10-0-0-195:~$ 
-ubuntu@ip-10-0-0-195:~$ 
-ubuntu@ip-10-0-0-195:~$ docker service ls
-ID            NAME  REPLICAS  IMAGE         COMMAND
-8joctah1e446  ping  1/1       dasmith/ping  
-ubuntu@ip-10-0-0-195:~$ docker service tasks
-"docker service tasks" requires exactly 1 argument(s).
-See 'docker service tasks --help'.
+ubuntu@ip-10-0-0-88:~$ docker swarm init
+ubuntu@ip-10-0-0-87:~$ docker swarm join ip-10-0-0-88:2377
+ubuntu@ip-10-0-0-89:~$ docker swarm join ip-10-0-0-88:2377
 
-Usage:  docker service tasks [OPTIONS] SERVICE
 
-List the tasks of a service
-ubuntu@ip-10-0-0-195:~$ docker service tasks ping
-ID                         NAME    SERVICE  IMAGE         LAST STATE          DESIRED STATE  NODE
-5xlllv3i9nx1buwceft47xye7  ping.1  ping     dasmith/ping  Running 13 seconds  Running        ip-10-0-0-195
-ubuntu@ip-10-0-0-195:~$ curl localhost:3000
-curl: (7) Failed to connect to localhost port 3000: Connection refused
-ubuntu@ip-10-0-0-195:~$ docker service inspect ping
+ubuntu@ip-10-0-0-88:~$ docker service create --network net1 --name ping --publish 3000/tcp dasmith/ping
+ubuntu@ip-10-0-0-88:~$ docker service inspect ping
 [
     {
-        "ID": "8joctah1e446qqn9qombrv53r",
+        "ID": "ezbdjxzs0hejekszdf03pgtq3",
         "Version": {
             "Index": 25
         },
-        "CreatedAt": "2016-06-24T19:47:21.837530239Z",
-        "UpdatedAt": "2016-06-24T19:47:21.855023643Z",
+        "CreatedAt": "2016-07-03T14:28:01.223979743Z",
+        "UpdatedAt": "2016-07-03T14:28:01.22694425Z",
         "Spec": {
             "Name": "ping",
             "TaskTemplate": {
@@ -69,7 +47,7 @@ ubuntu@ip-10-0-0-195:~$ docker service inspect ping
             "UpdateConfig": {},
             "Networks": [
                 {
-                    "Target": "16yq3f4vn5rddhwgesvvinjiq"
+                    "Target": "6mih4mfqvbls6aipbjtp3wizi"
                 }
             ],
             "EndpointSpec": {
@@ -83,7 +61,15 @@ ubuntu@ip-10-0-0-195:~$ docker service inspect ping
             }
         },
         "Endpoint": {
-            "Spec": {},
+            "Spec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 3000
+                    }
+                ]
+            },
             "Ports": [
                 {
                     "Protocol": "tcp",
@@ -93,114 +79,141 @@ ubuntu@ip-10-0-0-195:~$ docker service inspect ping
             ],
             "VirtualIPs": [
                 {
-                    "NetworkID": "88ezpa24l5bci9p324gnwzykf",
+                    "NetworkID": "awnru4fqy5yne4vwakt3z8qsk",
                     "Addr": "10.255.0.6/16"
                 },
                 {
-                    "NetworkID": "16yq3f4vn5rddhwgesvvinjiq",
+                    "NetworkID": "6mih4mfqvbls6aipbjtp3wizi",
                     "Addr": "10.0.0.2/24"
                 }
             ]
         }
     }
 ]
-ubuntu@ip-10-0-0-195:~$ curl localhost:30000
+
+ubuntu@ip-10-0-0-88:~$ docker service create --network net1 --name pong --publish 4000/tcp dasmith/pong
+ubuntu@ip-10-0-0-88:~$ docker service create --network net1 --name pingpong --publish 8080/tcp dasmith/pingpong
+
+ubuntu@ip-10-0-0-88:~$ docker service inspect pingpong
+[
+    {
+        "ID": "1ii7cqm3obx5qpv09xewnu5jk",
+        "Version": {
+            "Index": 41
+        },
+        "CreatedAt": "2016-07-03T14:32:40.822936415Z",
+        "UpdatedAt": "2016-07-03T14:32:40.825559289Z",
+        "Spec": {
+            "Name": "pingpong",
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "dasmith/pingpong"
+                },
+                "Resources": {
+                    "Limits": {},
+                    "Reservations": {}
+                },
+                "RestartPolicy": {
+                    "Condition": "any",
+                    "MaxAttempts": 0
+                },
+                "Placement": {}
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 1
+                }
+            },
+            "UpdateConfig": {},
+            "Networks": [
+                {
+                    "Target": "6mih4mfqvbls6aipbjtp3wizi"
+                }
+            ],
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 8080
+                    }
+                ]
+            }
+        },
+        "Endpoint": {
+            "Spec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 8080
+                    }
+                ]
+            },
+            "Ports": [
+                {
+                    "Protocol": "tcp",
+                    "TargetPort": 8080,
+                    "PublishedPort": 30002
+                }
+            ],
+            "VirtualIPs": [
+                {
+                    "NetworkID": "awnru4fqy5yne4vwakt3z8qsk",
+                    "Addr": "10.255.0.10/16"
+                },
+                {
+                    "NetworkID": "6mih4mfqvbls6aipbjtp3wizi",
+                    "Addr": "10.0.0.6/24"
+                }
+            ]
+        }
+    }
+]
+ubuntu@ip-10-0-0-88:~$ curl localhost:30002
+Get http://pingsvc:3000: dial tcp: lookup pingsvc on 127.0.0.11:53: read udp 127.0.0.1:48560->127.0.0.11:53: i/o timeout
+
+ubuntu@ip-10-0-0-88:~$ docker service create --network net1 --name pingsvc --publish 3000/tcp dasmith/ping
+a7hs285dyrws1qtc65xm3t1k0
+ubuntu@ip-10-0-0-88:~$ docker service create --network net1 --name pongsvc --publish 4000/tcp dasmith/pong
+5k0vn3j3zqe5qtoxc6ovjnne7
+
+ubuntu@ip-10-0-0-88:~$ curl localhost:30002
 PING
+PONG
 
-</pre>
-
-
-
-## Three Nodes with Docker
-
-(Note - this is in progress - seeing some problems with the overlay
-network and nodes talking to each other, thought I saw it working
-but now it isn't)
-
-Ok... boot up three nodes on amazon, or wherever...
-
-Pick one to be the master and initialize the swarm:
-
-<pre>
-ubuntu@ip-10-0-0-166:~$ docker swarm init
-Swarm initialized: current node (8sqns2kanreyoxb08047iejo9) is now a manager.
-</pre>
-
-Log into the other nodes and join the swarm.
-
-<pre>
-ubuntu@ip-10-0-0-165:~$ docker swarm join ip-10-0-0-166:2377
-This node joined a Swarm as a worker.
-</pre>
-
-On the master take a look at the nodes
-
-<pre>
-ubuntu@ip-10-0-0-166:~$ docker node ls
-ID                           NAME           MEMBERSHIP  STATUS  AVAILABILITY  MANAGER STATUS
-0fp18aur4lrvqogwer3iu57v5    ip-10-0-0-165  Accepted    Ready   Active        
-8sqns2kanreyoxb08047iejo9 *  ip-10-0-0-166  Accepted    Ready   Active        Leader
-dyqhnmi5riz89bh64w62l2fim    ip-10-0-0-167  Accepted    Ready   Active        
-</pre>
-
-Now create an overlay network for the swarm so the swarm hosts can
-talk to each other.
-
-<pre>
-ubuntu@ip-10-0-0-166:~$ docker network create -d overlay app1net
-1olux091glxc8e96e8o4ro08c
-ubuntu@ip-10-0-0-166:~$ docker network ls
-NETWORK ID          NAME                DRIVER              SCOPE
-1olux091glxc        app1net             overlay             swarm               
-daedc112ec4c        bridge              bridge              local               
-3179713dd616        docker_gwbridge     bridge              local               
-88fdf9b1b168        host                host                local               
-al6u5f1a5la7        ingress             overlay             swarm               
-95e05c9e318b        none                null                local               
-</pre>
-
-On one of the clients:
-
-<pre>
-ubuntu@ip-10-0-0-165:~$ docker network ls
-NETWORK ID          NAME                DRIVER              SCOPE
-477a680c8d0f        bridge              bridge              local               
-5ca1c860621f        docker_gwbridge     bridge              local               
-50f71faf235e        host                host                local               
-al6u5f1a5la7        ingress             overlay             swarm               
-2738e5cba853        none                null                local               
-</pre>
-
-Ok - create some services
-
-<pre>
-ubuntu@ip-10-0-0-166:~$ docker service create --name pingsvc --network app1net --publish 3000:3000 dasmith/ping
-egatd0ayb974tjsavrs5kvz6j
-ubuntu@ip-10-0-0-166:~$ docker service create --name pongsvc --network app1net --publish 4000:4000 dasmith/pong
-8o92p3gao5twb8qfoji6l38b0
-ubuntu@ip-10-0-0-166:~$ docker service create --name pingpong --network app1net --publish 8080:8080 dasmith/pingpong
-2epjct0zu53mwo9wuik8oa2yh
-ubuntu@ip-10-0-0-166:~$ docker service ls
-ID            NAME      REPLICAS  IMAGE             COMMAND
-2epjct0zu53m  pingpong  0/1       dasmith/pingpong  
-8o92p3gao5tw  pongsvc   0/1       dasmith/pong      
-egatd0ayb974  pingsvc   0/1       dasmith/ping      
-
-
-</pre>
-
-So... what's running on the master?
-
-<pre>
-ubuntu@ip-10-0-0-166:~$ docker ps
+ubuntu@ip-10-0-0-88:~$ docker ps
 CONTAINER ID        IMAGE                 COMMAND             CREATED             STATUS              PORTS               NAMES
-187da1efd4a8        dasmith/ping:latest   "/opt/ping"         3 minutes ago       Up 3 minutes        3000/tcp            ping.1.3z2w2al70qwmg91xm16tjshky
+1118ec79768a        dasmith/pong:latest   "/opt/pong"         16 minutes ago      Up 16 minutes                           pongsvc.1.5v14ta82mhtct3h79dnhrl8yl
+11328efe6c9c        dasmith/ping:latest   "/opt/ping"         22 minutes ago      Up 22 minutes       3000/tcp            ping.1.455ghhrxkomgt2q50sf5kp1vi
+
+ubuntu@ip-10-0-0-87:~$ docker ps
+CONTAINER ID        IMAGE                     COMMAND             CREATED             STATUS              PORTS               NAMES
+7ef050be7a30        dasmith/ping:latest       "/opt/ping"         17 minutes ago      Up 17 minutes       3000/tcp            pingsvc.1.3nkpqqblwiisg5mb2cdfjthce
+a796115a70f8        dasmith/pingpong:latest   "/opt/pingpong"     18 minutes ago      Up 18 minutes       8080/tcp            pingpong.1.8y7gsj4xck22m2rmrmxnf021f
+
+ubuntu@ip-10-0-0-89:~$ docker ps
+CONTAINER ID        IMAGE                 COMMAND             CREATED             STATUS              PORTS               NAMES
+9d1bbdc7fdb6        dasmith/pong:latest   "/opt/pong"         21 minutes ago      Up 21 minutes                           pong.1.771o43q5og0bxrhdkpmga3si2
+
+ubuntu@ip-10-0-0-89:~$ curl ip-10-0-0-88:30002
+PING
+PONG
 </pre>
 
-Let's try the ping pong service on the master node:
 
-<pre>
+From the above, the curl from worker 89 to leader 88 on the advertised service port (88) has the master route 
+the request to worker 87 where pingpong is running. Pingpong makes calls to pingsvc (running on 87) and pongsvc 
+(running on 88).
 
+## Vagrant
+
+Still trying to get this to work...
+
+* Ubuntu 14 out of the box doesn't have the kernel support needed for the overlay network
+* Updating the kernel lets the services boot given the overlay network, but the routing does
+not appear to work
+* The wily image does not start/work with Vagrant
 
 
 ### Vagrant
@@ -213,5 +226,6 @@ Note this installation assumes the following plugins are installed:
 <pre>
 vagrant plugin install vagrant-proxyconf
 vagrant plugin install vagrant-hostmanager
+vagrant plugin install vagrant-reload 
 </pre>
 
